@@ -5,6 +5,12 @@
     --white-color: #e7e7e7;
 }
 
+.navAppFont {
+
+    font-size: 1.8em;
+    font-weight: bolder;
+}
+
 body {
     color: var(--dark-color);
 }

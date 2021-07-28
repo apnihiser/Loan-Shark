@@ -17,7 +17,9 @@ function getValues() {
 
     } else {
 
+        //Convert loan rate into APR that will compound monthly.
         loanTerms.rate = loanTerms.rate / 1200;
+
         //perform value computations and return object that describe the amortization Table
         let amorTable = generateTable(loanTerms);
 
@@ -54,50 +56,56 @@ function generateTable(loanRequest) {
 
 }
 
+//Use information from amorTable to determine and append to HTML Table Body
 function displayValues(loanTerms, amorTable) {
 
-    const formatter = new Intl.NumberFormat('en-US', {
+        //Use this to 
+        const formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
         minimumFractionDigits: 2
-      })
+        })
 
-    document.getElementById("payment").innerHTML =  formatter.format(amorTable.monthlyPayment);
-    document.getElementById("principal").innerHTML = formatter.format(loanTerms.principal);
-    document.getElementById("interest").innerHTML = formatter.format(amorTable.totalInterest);
-    document.getElementById("cost").innerHTML = formatter.format(amorTable.totalCost);
+        //Write results to the summary section of the application page
+        document.getElementById("payment").innerHTML =  formatter.format(amorTable.monthlyPayment);
+        document.getElementById("principal").innerHTML = formatter.format(loanTerms.principal);
+        document.getElementById("interest").innerHTML = formatter.format(amorTable.totalInterest);
+        document.getElementById("cost").innerHTML = formatter.format(amorTable.totalCost);
 
-    //get the table body element from the page
-    let tableBody = document.getElementById("results");
+        //get the table body element from the page
+        let tableBody = document.getElementById("results");
 
-    //get the template row
-    let templateRow = document.getElementById("lsTemplate");
+        //get the template row
+        let templateRow = document.getElementById("lsTemplate");
 
-    //clear tablebody
-    tableBody.innerHTML = "";
+        //clear tablebody
+        tableBody.innerHTML = "";
 
-    //Loop to create table out of the data created from the loan terms and amortization object.
-    for ( let i = 1; i <= loanTerms.numberMonths; i++) {
+        //Loop to create table out of the data created from the loan terms and amortization object.
+        for ( let i = 1; i <= loanTerms.numberMonths; i++) {
 
-        //Each loop grab the template and import the table row.
-        let tableRow = document.importNode(templateRow.content, true);
+            //Each loop grab the template and import the table row.
+            let tableRow = document.importNode(templateRow.content, true);
 
-        //grab just the tds and put them into an array
-        let rowCols = tableRow.querySelectorAll("td");
+            //grab just the tds and put them into an array
+            let rowCols = tableRow.querySelectorAll("td");
 
-        interestPayment = amorTable.balance * loanTerms.rate;
-        amorTable.currentInterest += interestPayment;
-        principalPayment = amorTable.monthlyPayment - interestPayment;
-        amorTable.balance -= principalPayment;
-        
+            //Calculate final information to the written to the table body results
+            interestPayment = amorTable.balance * loanTerms.rate;
+            amorTable.currentInterest += interestPayment;
+            principalPayment = amorTable.monthlyPayment - interestPayment;
+            amorTable.balance -= principalPayment;
 
-        rowCols[0].textContent = i;
-        rowCols[1].textContent = formatter.format(amorTable.monthlyPayment);
-        rowCols[2].textContent = formatter.format(principalPayment);
-        rowCols[3].textContent = formatter.format(interestPayment);
-        rowCols[4].textContent = formatter.format(amorTable.currentInterest);
-        rowCols[5].textContent = formatter.format(amorTable.balance);
+            //fill template array with information
+            rowCols[0].textContent = i;
+            rowCols[1].textContent = formatter.format(amorTable.monthlyPayment);
+            rowCols[2].textContent = formatter.format(principalPayment);
+            rowCols[3].textContent = formatter.format(interestPayment);
+            rowCols[4].textContent = formatter.format(amorTable.currentInterest);
+            rowCols[5].textContent = formatter.format(amorTable.balance);
 
-        tableBody.appendChild(tableRow);
+            //Append to Table body
+            tableBody.appendChild(tableRow);
+
     }
 }
