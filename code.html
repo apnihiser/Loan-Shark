@@ -41,10 +41,10 @@
                         <a class="nav-link active" aria-current="page" href="/code.html">The Code</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" target="_blank" href="https://anihiser-portfolio.netlify.app/">About</a>
+                        <a class="nav-link" target="_blank" href="https://github.com/apnihiser/Loan-Shark">Git Repo</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" target="_blank" href="https://anihiser-portfolio.netlify.app/">Git Repo</a>
+                        <a class="nav-link" target="_blank" href="https://anihiser-portfolio.netlify.app/">About</a>
                     </li>
                 </ul>
             </div>
@@ -53,142 +53,197 @@
     <!-- ==== Main Section ==== -->
     <main class="flex-shrink-0">
         <div class="container py-5 px-5 mt-5">
-            <H2 class="border-1 border-bottom border-dark">The Code for APP NAME.</H2>
+            <H2 class="border-1 border-bottom border-dark">The Code for LOAN SHARK</H2>
             <div class="row row-cols-1 row-cols-lg-2">
                 <div class="col-lg-8">
+                    <!-- CODE HERE -->
                     <pre class="line-numbers"><code class="language-javascript">
                         //Controller function
                         //gather data from webform
                         function getValues() {
-
-                            let loanTerms = {};
-                            //define principle
-                            loanTerms.principal = parseInt(document.getElementById("inputLoanAmount").value);
-                            //define number of payments 12 per year by Month
-                            loanTerms.numberMonths = parseInt(document.getElementById("inputTermLength").value);
-                            //define loan rate / 100 per month / per days
-                            loanTerms.rate = parseInt(document.getElementById("inputInterestRate").value);
                             
-                            //form is validating numbers but we do a check here to ensure there is a value provided as well
-                            if ( !Number.isInteger(loanTerms.principal) || !Number.isInteger(loanTerms.numberMonths) || !Number.isInteger(loanTerms.rate) ) {
+                            //Define a new loan object
+                            loan = {};
+                            loan.payment = 0.00;
+                            loan.totalInterest = 0.00;
+                            loan.totalCost = 0.00;
+                            loan.rate = 0.00;
+                            loan.amount = 0.00;
+                            loan.term = 0.00;
+                            loan.payments = [];
 
-                                alert("Please check your entries and try again.")
+                            //Grab data from the Form
+                            loan.amount = parseInt(document.getElementById("inputLoanAmount").value);
+                            loan.term = parseInt(document.getElementById("inputTermLength").value);
+                            loan.rate = parseInt(document.getElementById("inputInterestRate").value);
 
-                            } else {
+                            //Calculate the loan and get payments
+                            newLoan = getPayments(loan);
 
-                                //Convert loan rate into APR that will compound monthly.
-                                loanTerms.rate = loanTerms.rate / 1200;
-
-                                //perform value computations and return object that describe the amortization Table
-                                let amorTable = generateTable(loanTerms);
-
-                                //accept object and display components
-                                displayValues(loanTerms, amorTable);
-
-                            }
-                        }
-
-                        function generateTable(loanRequest) {
-
-                            //Define Terms for Monthly Payment Formula
-                            let p = loanRequest.principal;
-                            let r = loanRequest.rate
-                            let n = loanRequest.numberMonths
-
-                            //Define Terms for Amortization Table
-                            let amorTable = {};
-                            
-                            //Solve for Monthly Payment using the following: m = ( p * r ) / ( 1 - ( 1 + r ) ^ -n ) p=principle, r=rate (APR 5% would be .05 per year or .05/12 per month), n=loan term in months
-                            amorTable.monthlyPayment = ( p * r ) / ( 1 - Math.pow(1 + r, -n) );
-
-                            //Create Balance sheet
-                            amorTable.balance = p;
-
-                            //Solve for Total Cost on the loan
-                            amorTable.totalCost = ( amorTable.monthlyPayment * n );
-
-                            //Solve for Total Interest on the loan
-                            amorTable.totalInterest = amorTable.totalCost - loanRequest.principal;
-                            amorTable.currentInterest = 0;
-
-                            return amorTable;
+                            //Send newLoan object to be displayed in HTML
+                            displayValues(newLoan);
 
                         }
 
-                        //Use information from amorTable to determine and append to HTML Table Body
-                        function displayValues(loanTerms, amorTable) {
+                        function getPayments(loan) {
 
-                                //Use this to 
-                                const formatter = new Intl.NumberFormat('en-US', {
-                                style: 'currency',
-                                currency: 'USD',
-                                minimumFractionDigits: 2
-                                })
+                            //Calculate Monthly Payment
+                            loan.payment = calcPayment(loan.amount, loan.rate, loan.term);
 
-                                //Write results to the summary section of the application page
-                                document.getElementById("payment").innerHTML =  formatter.format(amorTable.monthlyPayment);
-                                document.getElementById("principal").innerHTML = formatter.format(loanTerms.principal);
-                                document.getElementById("interest").innerHTML = formatter.format(amorTable.totalInterest);
-                                document.getElementById("cost").innerHTML = formatter.format(amorTable.totalCost);
+                            //For loop from month 1 to the term to calculate a payment schedule
+                            let balance = loan.amount;
+                            let totalInterest = 0.00;
+                            let monthlyInterest = 0.00;
+                            let monthlyPrincipal = 0.0;
+                            let monthlyRate = calcMonthlyRate(loan.rate)
 
-                                //get the table body element from the page
-                                let tableBody = document.getElementById("results");
+                            for (let month = 1; month <= loan.term; month++) {
 
-                                //get the template row
-                                let templateRow = document.getElementById("lsTemplate");
+                                //Logic based on requirements provided by Business Unit
+                                monthlyInterest = calcMonthlyInterest(balance, monthlyRate);
+                                totalInterest += monthlyInterest;
+                                monthlyPrincipal = loan.payment - monthlyInterest;
+                                balance -= monthlyPrincipal;
 
-                                //clear tablebody
-                                tableBody.innerHTML = "";
+                                //Define loan Payment object and shape data per month / loop.
+                                loanPayment = {};
 
-                                //Loop to create table out of the data created from the loan terms and amortization object.
-                                for ( let i = 1; i <= loanTerms.numberMonths; i++) {
+                                loanPayment.month = month;
+                                loanPayment.payment = loan.payment;
+                                loanPayment.monthlyPrincipal = monthlyPrincipal;
+                                loanPayment.monthlyInterest = monthlyInterest;
+                                loanPayment.totalInterest = totalInterest;
+                                loanPayment.balance = balance;
 
-                                    //Each loop grab the template and import the table row.
-                                    let tableRow = document.importNode(templateRow.content, true);
-
-                                    //grab just the tds and put them into an array
-                                    let rowCols = tableRow.querySelectorAll("td");
-
-                                    //Calculate final information to the written to the table body results
-                                    interestPayment = amorTable.balance * loanTerms.rate;
-                                    amorTable.currentInterest += interestPayment;
-                                    principalPayment = amorTable.monthlyPayment - interestPayment;
-                                    amorTable.balance -= principalPayment;
-
-                                    //fill template array with information
-                                    rowCols[0].textContent = i;
-                                    rowCols[1].textContent = formatter.format(amorTable.monthlyPayment);
-                                    rowCols[2].textContent = formatter.format(principalPayment);
-                                    rowCols[3].textContent = formatter.format(interestPayment);
-                                    rowCols[4].textContent = formatter.format(amorTable.currentInterest);
-                                    rowCols[5].textContent = formatter.format(amorTable.balance);
-
-                                    //Append to Table body
-                                    tableBody.appendChild(tableRow);
-
+                                //Push payments into the loan object
+                                loan.payments.push(loanPayment);
                             }
+
+                            loan.totalInterest = totalInterest;
+                            loan.totalCost = loan.amount + totalInterest;
+
+                            //Return the loan to the view
+                            return loan;
+
+                        }
+
+                        //Calculate monthly payment using mortgage formula
+                        function calcPayment(amount, rate, term) {
+
+                            let monthlyRate = calcMonthlyRate(rate);
+                            
+                            payment = (amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+
+                            return payment;
+                        }
+
+                        //convert annual rate into monthly
+                        function calcMonthlyRate(rate) {
+
+                            return rate / 1200;
+
+                        }
+
+                        //Calculate monthly interest
+                        function calcMonthlyInterest(balance, monthlyRate) {
+
+                            return balance * monthlyRate;
+                        }
+
+
+                        //Use information from loan object to append to HTML Table Body
+                        function displayValues(loan) {
+
+                            //Use this to format currency
+                            const formatter = new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2
+                            })
+
+
+
+                            //get the table body element from the page
+                            let tableBody = document.getElementById("results");
+
+                            //get the template row
+                            let templateRow = document.getElementById("lsTemplate");
+
+                            //clear tablebody
+                            tableBody.innerHTML = "";
+
+                            //Push results to the summary section of the application page
+                            document.getElementById("payment").innerHTML =  formatter.format(loan.payment);
+                            document.getElementById("principal").innerHTML = formatter.format(loan.amount);
+                            document.getElementById("interest").innerHTML = formatter.format(loan.totalInterest);
+                            document.getElementById("cost").innerHTML = formatter.format(loan.totalCost);
+
+                            //Loop to append each payment to HTML table
+                            loan.payments.forEach (payment => {
+
+                                //Each loop grab the template and import the table row.
+                                let tableRow = document.importNode(templateRow.content, true);
+
+                                //grab just the tds and put them into an array
+                                let rowCols = tableRow.querySelectorAll("td");
+
+                                //fill template array with monthly payment schedule
+                                rowCols[0].textContent = payment.month;
+                                rowCols[1].textContent = formatter.format(payment.payment);
+                                rowCols[2].textContent = formatter.format(payment.monthlyPrincipal);
+                                rowCols[3].textContent = formatter.format(payment.monthlyInterest);
+                                rowCols[4].textContent = formatter.format(payment.totalInterest);
+                                rowCols[5].textContent = formatter.format(payment.balance);
+
+                                //Append to Table body
+                                tableBody.appendChild(tableRow);
+
+                            });
                         }
                         </code>
                     </pre>
                 </div>
+                <!-- CODE DESCRIPTION HERE -->
                 <div class="col-lg-4">
-                    <h5>Loan Shark: Application Breakdown</h5>
-                    <p>Loan Shark is an interactive application which will accept data from a data form, calculate an amortization table with full payment schedules. This information is display from a table javascript writes into. These actions are based off a acontroller function, logic function and display function. This will seperate the areas of concern from each other to provide scalability and ease of troubleshooting.</p>
-                    <h6>Controller function</h6>
-                    <p>The controller function will be called when the user presses the calculate button. Once called the controller function will parse the values provide by the user into integers. If no value is provided then an alert will pop asking to the user to try again. Once valid data has been provided then the logic and display functions will be called.</p>
-                    <h6>Logic Function</h6>
-                    <p>The logic function accepts the loan object which contains the principal, rate, and term length in months. This loan will compount monthly so the formula will look like this:<br><br><math class="fst-italic fw-bolder">Monthly Payment = ( Principal * Rate ) / ( 1 - ( 1 + Rate ) ^-Term Length )</math><br><br>An amortization object is create with the following items to describe it:</p>
+                    <h4>APP ANALYSIS</h4>
+                    <br>
+                    <h5>SUMMARY</h5>
+                    <p class="lead">Loan Shark is an application created to assist the loanee in understanding their payment schedule. This application also provides a handy summary of the loan to get a high level snapshot of their overall costs. Please see the the description below. Also the code will be displayed to the left with additional notes to provide context.</p>
+                    <p class="lead">Conceptully you can approach the design of this application in a 3 teir architecture.</p>
                     <ul>
-                        <li>Montly Payment</li>
-                        <li>Balance</li>
-                        <li>Total Cost</li>
-                        <li>Total Interest</li>
-                        <li>Current Interest Payment Tally</li>
+                        <li class="lead">Controller Function</li>
+                        <li class="lead">Logic and Helper Functions</li>
+                        <li class="lead">Display Function</li>
                     </ul>
-                    <p>Once this object has been created and values calculated it will be passed to the display function via the controller function.</p>
-                    <h6>Display Function</h6>
-                    <p>The display function's main feature is it's ability to pull the results table body, as well as a template and fill in the attributes from the the amortization object. Then write into the results table body. Since we will be using financial figures the formatter function was used here. The summary of the loan schedule is located above the amortization detailed schedule. This is written into the DOM by use of the  innerHTML method.</p>
-                    <p>To write out the detailed table we will need to create a for loop which will go through each month and calculate out from the amortization object. The math is descried in the code box. Once the table to be written to and the template have been captured per month each line will calculate and append to the tablebody the template table row.</p>
+                    <h5>CONTROLLER FUNCTION</h5>
+                    <p class="lead">The important element behind this application is the data modeling. Passing information between functions can get messy without a solid structural element to organize the data. With that being the case we will be creating a loan object. This object will contain important elements like the interest, principal, payment schedule and more. The display page will feature a summary and a detailed table which will display the properties of this object. The main function of the controller function is capturing the requested loan parameters and to create a new loan object and pass this data between the logic and display functions.</p>
+                    <h5>LOGICAL SYSTEM</h5>
+                    <p class="lead">The logical system will receive a loan object from the controller function. This data has been modeled but will need to be described with more detail as all of the business logic has not been implemented. That will be the main function of the logical system. The logical system with this application can be broken down into these functions:</p>
+                    <ul>
+                        <li class="lead"><strong class="fst-italic">getPayments()</strong> : Receives a loan object from the controller function. With assistance of 3 helper functions it will fully describe the loan object. One notable element of this function is the creation of a new object named loanPayment. This will describe a single monthly payment which will be pushed into the <strong class="fst-italic">loan.payments</strong> array during a loop iterating over the loan's term length.</li>
+                        <ol>
+                            <li class="lead"><strong class="fst-italic">calcPayment()</strong> : Calculate monthly payment based on mortgage formula.</li>
+                            <li class="lead"><strong class="fst-italic">calcMonthlyRate()</strong> : Convert APR to monthly rate.</li>
+                            <li class="lead"><strong class="fst-italic">calcMonthlyInterest()</strong> : Dynamically determine interest based on previous month.</li>
+                        </ol>
+                    </ul>
+                    <p class="lead">Once all of the data has been detailed and the loan object has been updated. This will be send back to the controller function in the form of a newLoan object.</p>
+                    <h5>DISPLAY FUNCTION</h5>
+                    <p class="lead">To append this data to the HTML page we will go through a mechanism described in several steps:</p>
+                    <ol class="lead">
+                        <li>Capture the table body element from the HTML page.</li>
+                        <li>Capture the empty template marked up on the HTML page.</li>
+                        <li>Per forEach Loop:</li>
+                        <ol type="A">
+                            <li >Import a table row from the template in step 2.</li>
+                            <li>Create an array that will contains all 6 table data cells inside the table row in the previous step.</li>
+                            <li>Push all 6 <strong class="fst-italic">loan.payment</strong> properties into the array.</li>
+                            <li>Append the array as a child to the table targeted in step 1.</li>
+                        </ol>
+                    </ol>
+                    <p class="lead">Just to back up a bit and hit a couple other operations before the forEach loop. Since these are financial figures we are working with there is formatting that needs to be accounted for. The easiest way to format these is to use the <strong class="fst-italic">Intl.NumberFormat</strong> Javascript built in. This oeprations is wrapped around all figures so they are formatted correctly. Also the summary section of the display page does include a summarization of the loan which highlights the most important features of the loan. All of this is written before the forEach loop by simply utilizing the <strong class="fst-italic">.innerHTML = Javascript</strong> function.</p>
+                    <h5>CONCLUSION</h5>
+                    <p class="lead">Loan Shark is the perfect usecase to illustrate the powerful nature of objects in programming and how they can take a messy pile of functions and data and create beautifully organized code which is easy to follow, update, and troubleshoot. Since one object is being passed from function to function it is easy to keep track of all properties and massage them exactly how the need requires.</p>
                 </div>
             </div>
         </div>

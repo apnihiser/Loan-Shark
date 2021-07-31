@@ -1,111 +1,142 @@
 //Controller function
 //gather data from webform
 function getValues() {
-
-    let loanTerms = {};
-    //define principle
-    loanTerms.principal = parseInt(document.getElementById("inputLoanAmount").value);
-    //define number of payments 12 per year by Month
-    loanTerms.numberMonths = parseInt(document.getElementById("inputTermLength").value);
-    //define loan rate / 100 per month / per days
-    loanTerms.rate = parseInt(document.getElementById("inputInterestRate").value);
     
-    //form is validating numbers but we do a check here to ensure there is a value provided as well
-    if ( !Number.isInteger(loanTerms.principal) || !Number.isInteger(loanTerms.numberMonths) || !Number.isInteger(loanTerms.rate) ) {
+    //Define a new loan object
+    loan = {};
+    loan.payment = 0.00;
+    loan.totalInterest = 0.00;
+    loan.totalCost = 0.00;
+    loan.rate = 0.00;
+    loan.amount = 0.00;
+    loan.term = 0.00;
+    loan.payments = [];
 
-        alert("Please check your entries and try again.")
+    //Grab data from the Form
+    loan.amount = parseInt(document.getElementById("inputLoanAmount").value);
+    loan.term = parseInt(document.getElementById("inputTermLength").value);
+    loan.rate = parseInt(document.getElementById("inputInterestRate").value);
 
-    } else {
+    //Calculate the loan and get payments
+    newLoan = getPayments(loan);
 
-        //Convert loan rate into APR that will compound monthly.
-        loanTerms.rate = loanTerms.rate / 1200;
-
-        //perform value computations and return object that describe the amortization Table
-        let amorTable = generateTable(loanTerms);
-
-        //accept object and display components
-        displayValues(loanTerms, amorTable);
-
-    }
-}
-
-function generateTable(loanRequest) {
-
-    //Define Terms for Monthly Payment Formula
-    let p = loanRequest.principal;
-    let r = loanRequest.rate
-    let n = loanRequest.numberMonths
-
-    //Define Terms for Amortization Table
-    let amorTable = {};
-    
-    //Solve for Monthly Payment using the following: m = ( p * r ) / ( 1 - ( 1 + r ) ^ -n ) p=principle, r=rate (APR 5% would be .05 per year or .05/12 per month), n=loan term in months
-    amorTable.monthlyPayment = ( p * r ) / ( 1 - Math.pow(1 + r, -n) );
-
-    //Create Balance sheet
-    amorTable.balance = p;
-
-    //Solve for Total Cost on the loan
-    amorTable.totalCost = ( amorTable.monthlyPayment * n );
-
-    //Solve for Total Interest on the loan
-    amorTable.totalInterest = amorTable.totalCost - loanRequest.principal;
-    amorTable.currentInterest = 0;
-
-    return amorTable;
+    //Send newLoan object to be displayed in HTML
+    displayValues(newLoan);
 
 }
 
-//Use information from amorTable to determine and append to HTML Table Body
-function displayValues(loanTerms, amorTable) {
+function getPayments(loan) {
 
-        //Use this to 
-        const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2
-        })
+    //Calculate Monthly Payment
+    loan.payment = calcPayment(loan.amount, loan.rate, loan.term);
 
-        //Write results to the summary section of the application page
-        document.getElementById("payment").innerHTML =  formatter.format(amorTable.monthlyPayment);
-        document.getElementById("principal").innerHTML = formatter.format(loanTerms.principal);
-        document.getElementById("interest").innerHTML = formatter.format(amorTable.totalInterest);
-        document.getElementById("cost").innerHTML = formatter.format(amorTable.totalCost);
+    //For loop from month 1 to the term to calculate a payment schedule
+    let balance = loan.amount;
+    let totalInterest = 0.00;
+    let monthlyInterest = 0.00;
+    let monthlyPrincipal = 0.0;
+    let monthlyRate = calcMonthlyRate(loan.rate)
 
-        //get the table body element from the page
-        let tableBody = document.getElementById("results");
+    for (let month = 1; month <= loan.term; month++) {
 
-        //get the template row
-        let templateRow = document.getElementById("lsTemplate");
+        //Logic based on requirements provided by Business Unit
+        monthlyInterest = calcMonthlyInterest(balance, monthlyRate);
+        totalInterest += monthlyInterest;
+        monthlyPrincipal = loan.payment - monthlyInterest;
+        balance -= monthlyPrincipal;
 
-        //clear tablebody
-        tableBody.innerHTML = "";
+        //Define loan Payment object and shape data per month / loop.
+        loanPayment = {};
 
-        //Loop to create table out of the data created from the loan terms and amortization object.
-        for ( let i = 1; i <= loanTerms.numberMonths; i++) {
+        loanPayment.month = month;
+        loanPayment.payment = loan.payment;
+        loanPayment.monthlyPrincipal = monthlyPrincipal;
+        loanPayment.monthlyInterest = monthlyInterest;
+        loanPayment.totalInterest = totalInterest;
+        loanPayment.balance = balance;
 
-            //Each loop grab the template and import the table row.
-            let tableRow = document.importNode(templateRow.content, true);
-
-            //grab just the tds and put them into an array
-            let rowCols = tableRow.querySelectorAll("td");
-
-            //Calculate final information to the written to the table body results
-            interestPayment = amorTable.balance * loanTerms.rate;
-            amorTable.currentInterest += interestPayment;
-            principalPayment = amorTable.monthlyPayment - interestPayment;
-            amorTable.balance -= principalPayment;
-
-            //fill template array with information
-            rowCols[0].textContent = i;
-            rowCols[1].textContent = formatter.format(amorTable.monthlyPayment);
-            rowCols[2].textContent = formatter.format(principalPayment);
-            rowCols[3].textContent = formatter.format(interestPayment);
-            rowCols[4].textContent = formatter.format(amorTable.currentInterest);
-            rowCols[5].textContent = formatter.format(amorTable.balance);
-
-            //Append to Table body
-            tableBody.appendChild(tableRow);
-
+        //Push payments into the loan object
+        loan.payments.push(loanPayment);
     }
+
+    loan.totalInterest = totalInterest;
+    loan.totalCost = loan.amount + totalInterest;
+
+    //Return the loan to the view
+    return loan;
+
+}
+
+//Calculate monthly payment using mortgage formula
+function calcPayment(amount, rate, term) {
+
+    let monthlyRate = calcMonthlyRate(rate);
+    
+    payment = (amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+
+    return payment;
+}
+
+//convert annual rate into monthly
+function calcMonthlyRate(rate) {
+
+    return rate / 1200;
+
+}
+
+//Calculate monthly interest
+function calcMonthlyInterest(balance, monthlyRate) {
+
+    return balance * monthlyRate;
+}
+
+
+//Use information from loan object to append to HTML Table Body
+function displayValues(loan) {
+
+    //Use this to format currency
+    const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+    })
+
+
+
+    //get the table body element from the page
+    let tableBody = document.getElementById("results");
+
+    //get the template row
+    let templateRow = document.getElementById("lsTemplate");
+
+    //clear tablebody
+    tableBody.innerHTML = "";
+
+    //Push results to the summary section of the application page
+    document.getElementById("payment").innerHTML =  formatter.format(loan.payment);
+    document.getElementById("principal").innerHTML = formatter.format(loan.amount);
+    document.getElementById("interest").innerHTML = formatter.format(loan.totalInterest);
+    document.getElementById("cost").innerHTML = formatter.format(loan.totalCost);
+
+    //Loop to append each payment to HTML table
+    loan.payments.forEach (payment => {
+
+        //Each loop grab the template and import the table row.
+        let tableRow = document.importNode(templateRow.content, true);
+
+        //grab just the tds and put them into an array
+        let rowCols = tableRow.querySelectorAll("td");
+
+        //fill template array with monthly payment schedule
+        rowCols[0].textContent = payment.month;
+        rowCols[1].textContent = formatter.format(payment.payment);
+        rowCols[2].textContent = formatter.format(payment.monthlyPrincipal);
+        rowCols[3].textContent = formatter.format(payment.monthlyInterest);
+        rowCols[4].textContent = formatter.format(payment.totalInterest);
+        rowCols[5].textContent = formatter.format(payment.balance);
+
+        //Append to Table body
+        tableBody.appendChild(tableRow);
+
+    });
 }
